@@ -7,7 +7,7 @@ import {
   NETWORK_SYSTEMS,
   PRICING,
 } from "@/lib/fg-data";
-import { DemoTag, Panel, Reveal, SectionHead } from "./ui";
+import { Counter, DemoTag, Panel, Reveal, SectionHead } from "./ui";
 
 export function AgentNetwork() {
   const [active, setActive] = useState<number | null>(null);
