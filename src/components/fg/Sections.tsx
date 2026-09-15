@@ -215,7 +215,7 @@ export function DashboardPreview() {
               {DASHBOARD_METRICS.map((m) => (
                 <div key={m.label} className="rounded-lg border border-border bg-surface/40 p-4">
                   <p className="text-xs text-muted-foreground">{m.label}</p>
-                  <p className="mt-2 font-display text-2xl tabular-nums">{m.value}</p>
+                  <p className="mt-2 font-display text-2xl tabular-nums"><Counter value={m.value} /></p>
                 </div>
               ))}
             </div>
