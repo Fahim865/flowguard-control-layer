@@ -123,6 +123,7 @@ export function Hero() {
                 selected={selected}
                 setHovered={setHovered}
                 setSelected={setSelected}
+                active={visible}
               />
             </Suspense>
           ) : (
