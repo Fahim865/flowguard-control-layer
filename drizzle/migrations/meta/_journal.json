@@ -1,5 +1,13 @@
 {
   "version": "7",
   "dialect": "postgresql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789461362958,
+      "tag": "0000_flowguard_phase2_foundation",
+      "breakpoints": true
+    }
+  ]
 }
