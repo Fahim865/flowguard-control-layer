@@ -171,9 +171,9 @@ function Node({
         />
       </mesh>
       {showLabel && (
-        <Html center distanceFactor={9} position={[0, 0.48, 0]} zIndexRange={[5, 0]}>
+        <Html center position={[0, 0.46, 0]} zIndexRange={[5, 0]} style={{ pointerEvents: "none" }}>
           <span
-            className="pointer-events-none select-none whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.22em]"
+            className="pointer-events-none select-none whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.2em]"
             style={{
               color: highlighted ? "#e8fbff" : "#8ea7b3",
               opacity: dimmed ? 0.35 : 1,
@@ -230,7 +230,7 @@ function Scene({
   reduced: boolean;
 }) {
   const ring = useRef<THREE.Group>(null);
-  const nodes = useMemo(() => nodePositions(3.15), []);
+  const nodes = useMemo(() => nodePositions(2.7), []);
   const curves = useMemo(
     () =>
       nodes.map(({ pos }) => {
