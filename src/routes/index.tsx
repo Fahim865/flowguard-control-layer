@@ -1,24 +1,67 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
+import {
+  ArbitrationDemo,
+  ComplianceDemo,
+  EvidenceTimeline,
+  RealityVerification,
+  RiskDemo,
+  SelfRepairDemo,
+} from "@/components/fg/Demos";
+import { Hero } from "@/components/fg/Hero";
+import {
+  AgentNetwork,
+  Capabilities,
+  ControlLayer,
+  DashboardPreview,
+  FinalCta,
+  Footer,
+  Nav,
+  Pricing,
+  Security,
+} from "@/components/fg/Sections";
+import { Story } from "@/components/fg/Story";
+
+const TITLE = "FlowGuard — Make Autonomous AI Safe to Run";
+const DESCRIPTION =
+  "FlowGuard is the control layer for autonomous AI: monitor, evaluate, verify and recover AI workflows before autonomous actions become business incidents.";
+
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: TITLE },
+      { name: "description", content: DESCRIPTION },
+      { property: "og:title", content: TITLE },
+      { property: "og:description", content: DESCRIPTION },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div id="top" className="min-h-screen bg-background">
+      <Nav />
+      <main>
+        <Hero />
+        <Story />
+        <AgentNetwork />
+        <ControlLayer />
+        <Capabilities />
+        <RiskDemo />
+        <EvidenceTimeline />
+        <SelfRepairDemo />
+        <ArbitrationDemo />
+        <RealityVerification />
+        <ComplianceDemo />
+        <DashboardPreview />
+        <Security />
+        <Pricing />
+        <FinalCta />
+      </main>
+      <Footer />
     </div>
   );
 }
