@@ -202,7 +202,7 @@ function Scene({
       {nodes.map(({ cap, pos }, i) => (
         <group key={cap.id}>
           <Connection
-            curve={curves[i]}
+            curve={curves[i]!}
             highlighted={active === cap.id}
             particles={particles}
           />

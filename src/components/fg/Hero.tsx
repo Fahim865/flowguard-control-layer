@@ -65,7 +65,7 @@ export function Hero() {
     setWebgl(supportsWebGL());
     const el = holder.current;
     if (!el) return;
-    const io = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), {
+    const io = new IntersectionObserver((entries) => setVisible(Boolean(entries[0]?.isIntersecting)), {
       threshold: 0.05,
     });
     io.observe(el);
