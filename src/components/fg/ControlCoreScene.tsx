@@ -35,21 +35,21 @@ function Core({ active }: { active: boolean }) {
   return (
     <group ref={ref}>
       <mesh ref={inner}>
-        <icosahedronGeometry args={[1.05, 1]} />
+        <icosahedronGeometry args={[0.85, 1]} />
         <meshStandardMaterial
-          color="#0e1a20"
+          color="#16333d"
           emissive={ACCENT}
-          emissiveIntensity={0.9}
+          emissiveIntensity={0.22}
           metalness={0.7}
           roughness={0.25}
           flatShading
         />
       </mesh>
       <mesh>
-        <icosahedronGeometry args={[1.55, 1]} />
+        <icosahedronGeometry args={[1.35, 1]} />
         <meshBasicMaterial color={ACCENT} wireframe transparent opacity={0.18} />
       </mesh>
-      <pointLight position={[0, 0, 0]} intensity={14} distance={16} color={ACCENT} />
+      <pointLight position={[0, 0, 0]} intensity={9} distance={14} color={ACCENT} />
     </group>
   );
 }
@@ -158,7 +158,7 @@ function Rig({ focus }: { focus: THREE.Vector3 | null }) {
     if (focus) {
       target.set(focus.x * 1.7, focus.y * 1.6 + 1.2, focus.z * 1.7 + 3.2);
     } else {
-      target.set(pointer.x * 1.4, 1.1 + pointer.y * 0.8, 7.4);
+      target.set(pointer.x * 1.4, 1.1 + pointer.y * 0.8, 8.6);
     }
     camera.position.lerp(target, 0.045);
     camera.lookAt(0, 0, 0);
@@ -179,7 +179,7 @@ function Scene({
   setSelected: (id: CapabilityId | null) => void;
   quality: "low" | "high";
 }) {
-  const nodes = useMemo(() => nodePositions(3.4), []);
+  const nodes = useMemo(() => nodePositions(3.0), []);
   const curves = useMemo(
     () =>
       nodes.map(({ pos }) => {
@@ -237,7 +237,7 @@ export default function ControlCoreScene({
 
   return (
     <Canvas
-      camera={{ position: [0, 1.2, 7.4], fov: 52 }}
+      camera={{ position: [0, 1.2, 8.6], fov: 52 }}
       dpr={[1, quality === "high" ? 1.75 : 1]}
       gl={{ antialias: quality === "high", powerPreference: "high-performance" }}
       frameloop="always"
