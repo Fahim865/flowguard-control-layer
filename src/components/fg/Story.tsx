@@ -40,7 +40,7 @@ const SCENES = [
 ];
 
 function SceneVisual({ index, progress }: { index: number; progress: ReturnType<typeof useScroll>["scrollYProgress"] }) {
-  const rotate = useTransform(progress, [0, 1], [0, 90]);
+  const rotate = useTransform(progress, [0, 1], [-14, 14]);
   const risky = index >= 2 && index <= 4;
   const controlled = index >= 3;
   return (

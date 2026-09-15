@@ -39,7 +39,7 @@ function Core({ active }: { active: boolean }) {
         <meshStandardMaterial
           color="#0e1a20"
           emissive={ACCENT}
-          emissiveIntensity={0.45}
+          emissiveIntensity={0.9}
           metalness={0.7}
           roughness={0.25}
           flatShading
@@ -49,7 +49,7 @@ function Core({ active }: { active: boolean }) {
         <icosahedronGeometry args={[1.55, 1]} />
         <meshBasicMaterial color={ACCENT} wireframe transparent opacity={0.18} />
       </mesh>
-      <pointLight position={[0, 0, 0]} intensity={8} distance={12} color={ACCENT} />
+      <pointLight position={[0, 0, 0]} intensity={14} distance={16} color={ACCENT} />
     </group>
   );
 }
@@ -196,7 +196,7 @@ function Scene({
 
   return (
     <>
-      <ambientLight intensity={0.35} />
+      <ambientLight intensity={0.7} />
       <directionalLight position={[5, 6, 4]} intensity={0.8} color="#9fd4e6" />
       <Core active={Boolean(active)} />
       {nodes.map(({ cap, pos }, i) => (
