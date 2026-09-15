@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 export function Reveal({
   children,
@@ -58,5 +58,37 @@ export function Panel({ children, className = "" }: { children: ReactNode; class
     >
       {children}
     </div>
+  );
+}
+
+export function Counter({ value }: { value: string }) {
+  const match = value.match(/^(\d[\d,]*)(.*)$/);
+  const target = match ? Number(match[1]!.replace(/,/g, "")) : 0;
+  const suffix = match ? match[2] ?? "" : "";
+  const [n, setN] = useState(match ? 0 : -1);
+
+  useEffect(() => {
+    if (!match) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setN(target);
+      return;
+    }
+    let raf = 0;
+    const start = performance.now();
+    const tick = (t: number) => {
+      const p = Math.min((t - start) / 900, 1);
+      setN(Math.round(target * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, match]);
+
+  if (n < 0) return <>{value}</>;
+  return (
+    <>
+      {n.toLocaleString()}
+      {suffix}
+    </>
   );
 }

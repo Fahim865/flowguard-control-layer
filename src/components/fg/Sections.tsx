@@ -7,7 +7,7 @@ import {
   NETWORK_SYSTEMS,
   PRICING,
 } from "@/lib/fg-data";
-import { DemoTag, Panel, Reveal, SectionHead } from "./ui";
+import { Counter, DemoTag, Panel, Reveal, SectionHead } from "./ui";
 
 export function AgentNetwork() {
   const [active, setActive] = useState<number | null>(null);
@@ -215,7 +215,7 @@ export function DashboardPreview() {
               {DASHBOARD_METRICS.map((m) => (
                 <div key={m.label} className="rounded-lg border border-border bg-surface/40 p-4">
                   <p className="text-xs text-muted-foreground">{m.label}</p>
-                  <p className="mt-2 font-display text-2xl tabular-nums">{m.value}</p>
+                  <p className="mt-2 font-display text-2xl tabular-nums"><Counter value={m.value} /></p>
                 </div>
               ))}
             </div>

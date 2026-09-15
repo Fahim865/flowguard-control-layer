@@ -123,6 +123,7 @@ export function Hero() {
                 selected={selected}
                 setHovered={setHovered}
                 setSelected={setSelected}
+                active={visible}
               />
             </Suspense>
           ) : (
@@ -147,6 +148,36 @@ export function Hero() {
               Hover or click a node
             </p>
           )}
+          {selected && (
+            <button
+              onClick={() => {
+                setSelected(null);
+                setHovered(null);
+              }}
+              className="absolute right-2 top-2 rounded-md border border-border bg-surface/80 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground transition hover:border-primary/60 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              Reset view
+            </button>
+          )}
+        </div>
+
+        <div className="lg:col-span-2 -mt-2 flex flex-wrap gap-2">
+          {CAPABILITIES.map((cap) => (
+            <button
+              key={cap.id}
+              onFocus={() => setHovered(cap.id)}
+              onBlur={() => setHovered(null)}
+              onClick={() => setSelected(selected === cap.id ? null : cap.id)}
+              aria-pressed={selected === cap.id}
+              className={`rounded-full border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.2em] transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${
+                selected === cap.id
+                  ? "border-primary/70 bg-primary/15 text-foreground"
+                  : "border-border bg-surface/50 text-muted-foreground"
+              }`}
+            >
+              {cap.name}
+            </button>
+          ))}
         </div>
       </div>
     </section>
