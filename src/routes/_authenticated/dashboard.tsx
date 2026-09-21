@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 type Agent = { id: string; name: string; status: string; risk_score: number };
 type Ev = { id: string; action: string; risk_score: number; status: string; created_at: string };
 type Incident = { id: string; title: string; category: string; severity: string; status: string; summary: string | null };
-type Recovery = { id: string; incident_id: string; action: string; state: string };
+type Recovery = { id: string; incident_id: string | null; action: string; state: string };
 
 function Dashboard({ m }: { m: Membership }) {
   const [agents, setAgents] = useState<Agent[]>([]);
