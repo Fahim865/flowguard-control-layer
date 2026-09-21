@@ -397,12 +397,18 @@ export function Nav() {
           <a className="transition hover:text-foreground" href="#dashboard">Dashboard</a>
           <a className="transition hover:text-foreground" href="#pricing">Pricing</a>
         </nav>
-        <a
-          href="#pricing"
-          className="rounded-md border border-primary/50 bg-primary/10 px-4 py-2 text-xs font-medium text-primary transition hover:bg-primary/20"
-        >
-          Start Free
-        </a>
+        <div className="flex items-center gap-4">
+          <a className="text-xs text-muted-foreground transition hover:text-foreground" href="/auth">
+            Sign in
+          </a>
+          <a
+            href="/auth"
+            className="rounded-md border border-primary/50 bg-primary/10 px-4 py-2 text-xs font-medium text-primary transition hover:bg-primary/20"
+          >
+            Start Free
+          </a>
+        </div>
+
       </div>
     </header>
   );
