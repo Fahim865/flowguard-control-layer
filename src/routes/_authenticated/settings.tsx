@@ -52,7 +52,7 @@ function Settings({ m }: { m: Membership }) {
     await supabase.from("policies").update({ enabled: !p.enabled }).eq("id", p.id);
     await supabase.from("audit_logs").insert({
       org_id: m.org_id,
-      actor_id: (await supabase.auth.getUser()).data.user?.id,
+      actor_id: (await supabase.auth.getUser()).data.user?.id ?? null,
       action: "policy.toggled",
       detail: `${p.name} ${p.enabled ? "disabled" : "enabled"}`,
     });
@@ -73,7 +73,7 @@ function Settings({ m }: { m: Membership }) {
     );
     await supabase.from("audit_logs").insert({
       org_id: m.org_id,
-      actor_id: (await supabase.auth.getUser()).data.user?.id,
+      actor_id: (await supabase.auth.getUser()).data.user?.id ?? null,
       action: "policy.evaluated",
       detail: `${test} → ${decision}`,
     });
