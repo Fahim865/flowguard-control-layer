@@ -3,6 +3,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/reset-password")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Set a new password — FlowGuard" },
