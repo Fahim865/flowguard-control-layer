@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { OrgGate } from "@/components/fg/OrgGate";
+import { AmbientField } from "@/components/fg/AmbientField";
 import { DemoTag, Panel } from "@/components/fg/ui";
 import { can, type Membership } from "@/lib/useOrg";
 
@@ -33,17 +34,17 @@ function Dashboard({ m }: { m: Membership }) {
   useEffect(() => {
     void (async () => {
       const [a, e, i, r] = await Promise.all([
-        supabase.from("agents").select("id,name,status,risk_score").order("name"),
-        supabase.from("agent_events").select("id,action,risk_score,status,created_at").order("created_at", { ascending: false }).limit(10),
-        supabase.from("incidents").select("id,title,category,severity,status,summary").order("created_at", { ascending: false }),
-        supabase.from("recovery_actions").select("id,incident_id,action,state"),
+        supabase.from("agents").select("id,name,status,risk_score").eq("org_id", m.org_id).order("name"),
+        supabase.from("agent_events").select("id,action,risk_score,status,created_at").eq("org_id", m.org_id).order("created_at", { ascending: false }).limit(10),
+        supabase.from("incidents").select("id,title,category,severity,status,summary").eq("org_id", m.org_id).order("created_at", { ascending: false }),
+        supabase.from("recovery_actions").select("id,incident_id,action,state").eq("org_id", m.org_id),
       ]);
       setAgents(a.data ?? []);
       setEvents(e.data ?? []);
       setIncidents(i.data ?? []);
       setRecovery(r.data ?? []);
     })();
-  }, []);
+  }, [m.org_id]);
 
   const highRisk = events.filter((e) => e.risk_score >= 70).length;
   const metrics = [
@@ -55,14 +56,17 @@ function Dashboard({ m }: { m: Membership }) {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-wrap items-center gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{m.organizations?.name ?? "Organization"}</h1>
-          <p className="text-sm text-muted-foreground">
-            Signed in as <span className="font-mono text-xs uppercase">{m.role}</span>
-          </p>
+      <header className="relative overflow-hidden rounded-xl glass-panel p-6">
+        <AmbientField variant="grid" />
+        <div className="relative flex flex-wrap items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">{m.organizations?.name ?? "Organization"}</h1>
+            <p className="text-sm text-muted-foreground">
+              Signed in as <span className="font-mono text-xs uppercase">{m.role}</span>
+            </p>
+          </div>
+          <DemoTag className="ml-auto" />
         </div>
-        <DemoTag className="ml-auto" />
       </header>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
