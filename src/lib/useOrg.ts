@@ -18,9 +18,12 @@ export const can = {
   viewAudit: (r: Role) => r === "owner" || r === "admin" || r === "analyst",
 };
 
+const ACTIVE_KEY = "fg.active_org";
+
 export function useOrg() {
   const [loading, setLoading] = useState(true);
-  const [membership, setMembership] = useState<Membership | null>(null);
+  const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [activeOrg, setActive] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -30,9 +33,12 @@ export function useOrg() {
     const { data } = await supabase
       .from("organization_members")
       .select("org_id, role, organizations(id, name)")
-      .limit(1)
-      .maybeSingle();
-    setMembership((data as unknown as Membership) ?? null);
+      .order("created_at");
+    const list = (data as unknown as Membership[]) ?? [];
+    setMemberships(list);
+    const stored = typeof window !== "undefined" ? window.localStorage.getItem(ACTIVE_KEY) : null;
+    const next = list.find((x) => x.org_id === stored)?.org_id ?? list[0]?.org_id ?? null;
+    setActive(next);
     setLoading(false);
   }, []);
 
@@ -40,5 +46,12 @@ export function useOrg() {
     void load();
   }, [load]);
 
-  return { loading, membership, userId, reload: load };
+  const setActiveOrg = useCallback((org_id: string) => {
+    window.localStorage.setItem(ACTIVE_KEY, org_id);
+    setActive(org_id);
+  }, []);
+
+  const membership = memberships.find((x) => x.org_id === activeOrg) ?? null;
+
+  return { loading, memberships, membership, activeOrg, setActiveOrg, userId, reload: load };
 }
