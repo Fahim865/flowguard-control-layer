@@ -111,7 +111,15 @@ function Dashboard({ m }: { m: Membership }) {
         {incidents.map((i) => (
           <Panel key={i.id} className="p-5">
             <div className="flex flex-wrap items-center gap-3">
-              <h3 className="font-medium">{i.title}</h3>
+              <h3 className="font-medium">
+                <Link
+                  to="/incidents/$incidentId"
+                  params={{ incidentId: i.id }}
+                  className="underline-offset-4 transition hover:text-primary hover:underline"
+                >
+                  {i.title}
+                </Link>
+              </h3>
               <span className="font-mono text-[11px] uppercase text-muted-foreground">{i.category}</span>
               <span className="ml-auto font-mono text-[11px] uppercase">{i.severity} · {i.status}</span>
             </div>

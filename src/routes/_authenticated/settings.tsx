@@ -37,8 +37,13 @@ function Settings({ m }: { m: Membership }) {
 
   async function load() {
     const [p, a] = await Promise.all([
-      supabase.from("policies").select("id,name,rule,effect,enabled").order("created_at"),
-      supabase.from("audit_logs").select("id,action,detail,created_at").order("created_at", { ascending: false }).limit(20),
+      supabase.from("policies").select("id,name,rule,effect,enabled").eq("org_id", m.org_id).order("created_at"),
+      supabase
+        .from("audit_logs")
+        .select("id,action,detail,created_at")
+        .eq("org_id", m.org_id)
+        .order("created_at", { ascending: false })
+        .limit(20),
     ]);
     setPolicies((p.data as Policy[]) ?? []);
     setAudit((a.data as Audit[]) ?? []);
@@ -46,10 +51,11 @@ function Settings({ m }: { m: Membership }) {
 
   useEffect(() => {
     void load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m.org_id]);
 
   async function toggle(p: Policy) {
-    await supabase.from("policies").update({ enabled: !p.enabled }).eq("id", p.id);
+    await supabase.from("policies").update({ enabled: !p.enabled }).eq("id", p.id).eq("org_id", m.org_id);
     await supabase.from("audit_logs").insert({
       org_id: m.org_id,
       actor_id: (await supabase.auth.getUser()).data.user?.id ?? null,
