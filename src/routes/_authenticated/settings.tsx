@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { OrgGate } from "@/components/fg/OrgGate";
+import { AmbientField } from "@/components/fg/AmbientField";
 import { DemoTag, Panel } from "@/components/fg/ui";
 import { can, type Membership } from "@/lib/useOrg";
 
@@ -37,8 +38,13 @@ function Settings({ m }: { m: Membership }) {
 
   async function load() {
     const [p, a] = await Promise.all([
-      supabase.from("policies").select("id,name,rule,effect,enabled").order("created_at"),
-      supabase.from("audit_logs").select("id,action,detail,created_at").order("created_at", { ascending: false }).limit(20),
+      supabase.from("policies").select("id,name,rule,effect,enabled").eq("org_id", m.org_id).order("created_at"),
+      supabase
+        .from("audit_logs")
+        .select("id,action,detail,created_at")
+        .eq("org_id", m.org_id)
+        .order("created_at", { ascending: false })
+        .limit(20),
     ]);
     setPolicies((p.data as Policy[]) ?? []);
     setAudit((a.data as Audit[]) ?? []);
@@ -46,10 +52,11 @@ function Settings({ m }: { m: Membership }) {
 
   useEffect(() => {
     void load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m.org_id]);
 
   async function toggle(p: Policy) {
-    await supabase.from("policies").update({ enabled: !p.enabled }).eq("id", p.id);
+    await supabase.from("policies").update({ enabled: !p.enabled }).eq("id", p.id).eq("org_id", m.org_id);
     await supabase.from("audit_logs").insert({
       org_id: m.org_id,
       actor_id: (await supabase.auth.getUser()).data.user?.id ?? null,
@@ -82,9 +89,12 @@ function Settings({ m }: { m: Membership }) {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <DemoTag className="ml-auto" />
+      <header className="relative overflow-hidden rounded-xl glass-panel p-6">
+        <AmbientField variant="orbit" />
+        <div className="relative flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+          <DemoTag className="ml-auto" />
+        </div>
       </header>
 
       <div role="tablist" aria-label="Settings sections" className="flex flex-wrap gap-1">
