@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { OrgGate } from "@/components/fg/OrgGate";
+import { AmbientField } from "@/components/fg/AmbientField";
 import { DemoTag, Panel } from "@/components/fg/ui";
 import { can, type Membership } from "@/lib/useOrg";
 
@@ -88,9 +89,12 @@ function Settings({ m }: { m: Membership }) {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <DemoTag className="ml-auto" />
+      <header className="relative overflow-hidden rounded-xl glass-panel p-6">
+        <AmbientField variant="orbit" />
+        <div className="relative flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+          <DemoTag className="ml-auto" />
+        </div>
       </header>
 
       <div role="tablist" aria-label="Settings sections" className="flex flex-wrap gap-1">
