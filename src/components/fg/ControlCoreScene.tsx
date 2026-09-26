@@ -299,7 +299,7 @@ function Rig({ focus, reduced }: { focus: THREE.Vector3 | null; reduced: boolean
       const py = reduced ? 0 : smooth.current.y;
       const entrance = reduced ? 0 : Math.max(0, 1 - state.clock.elapsedTime / 2.4);
       const drift = reduced ? 0 : Math.sin(state.clock.elapsedTime * 0.16) * 0.18;
-      const depth = Math.max(9.6, Math.min(18, 5.15 / Math.max(0.4, size.width / size.height)));
+      const depth = Math.max(9.6, Math.min(18, 6.5 / Math.max(0.4, size.width / size.height)));
       target.set(px * 0.85 + drift, 1.05 + py * 0.42, depth + entrance * 2.6);
       lookTarget.set(px * 0.2, py * 0.1, 0);
     }
