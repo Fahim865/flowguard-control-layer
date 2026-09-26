@@ -33,6 +33,7 @@ function Core({ active, reduced }: { active: boolean; reduced: boolean }) {
   const shell = useRef<THREE.Mesh>(null);
   const rings = useRef<THREE.Group>(null);
   const scanner = useRef<THREE.Mesh>(null);
+  const innerFrame = useRef<THREE.Group>(null);
 
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.05);
@@ -49,6 +50,7 @@ function Core({ active, reduced }: { active: boolean; reduced: boolean }) {
       rings.current.rotation.x += dt * (active ? 0.22 : 0.08);
       rings.current.rotation.z -= dt * (active ? 0.16 : 0.055);
     }
+    if (innerFrame.current && !reduced) innerFrame.current.rotation.y -= dt * 0.32;
     if (scanner.current && !reduced) {
       scanner.current.rotation.z += dt * 0.38;
     }
@@ -73,6 +75,16 @@ function Core({ active, reduced }: { active: boolean; reduced: boolean }) {
         <icosahedronGeometry args={[1.42, 1]} />
         <meshBasicMaterial color={ACCENT} wireframe transparent opacity={0.16} />
       </mesh>
+      <group ref={innerFrame}>
+        <mesh rotation={[Math.PI / 4, 0, Math.PI / 4]}>
+          <octahedronGeometry args={[1.12, 0]} />
+          <meshBasicMaterial color={SIGNAL} wireframe transparent opacity={0.31} depthWrite={false} />
+        </mesh>
+        <mesh rotation={[0, Math.PI / 4, Math.PI / 4]}>
+          <octahedronGeometry args={[0.72, 0]} />
+          <meshBasicMaterial color={AMBER} wireframe transparent opacity={0.28} depthWrite={false} />
+        </mesh>
+      </group>
       <group ref={rings}>
         <mesh rotation={[Math.PI / 2, 0.25, 0]}>
           <torusGeometry args={[1.72, 0.012, 5, 96]} />
@@ -268,7 +280,7 @@ function Node({
 }
 
 function Rig({ focus, reduced }: { focus: THREE.Vector3 | null; reduced: boolean }) {
-  const { camera, pointer } = useThree();
+  const { camera, pointer, size } = useThree();
   const target = useMemo(() => new THREE.Vector3(), []);
   const look = useMemo(() => new THREE.Vector3(), []);
   const lookTarget = useMemo(() => new THREE.Vector3(), []);
@@ -287,7 +299,8 @@ function Rig({ focus, reduced }: { focus: THREE.Vector3 | null; reduced: boolean
       const py = reduced ? 0 : smooth.current.y;
       const entrance = reduced ? 0 : Math.max(0, 1 - state.clock.elapsedTime / 2.4);
       const drift = reduced ? 0 : Math.sin(state.clock.elapsedTime * 0.16) * 0.18;
-      target.set(px * 0.85 + drift, 1.05 + py * 0.42, 10.1 + entrance * 2.6);
+      const depth = Math.max(9.6, Math.min(18, 5.15 / Math.max(0.4, size.width / size.height)));
+      target.set(px * 0.85 + drift, 1.05 + py * 0.42, depth + entrance * 2.6);
       lookTarget.set(px * 0.2, py * 0.1, 0);
     }
     camera.position.lerp(target, damping);
