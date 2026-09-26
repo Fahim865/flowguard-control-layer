@@ -27,42 +27,43 @@ function nodePositions(radius: number) {
   });
 }
 
-function Core({ active }: { active: boolean }) {
+function Core({ active, reduced }: { active: boolean; reduced: boolean }) {
   const ref = useRef<THREE.Group>(null);
   const inner = useRef<THREE.Mesh>(null);
   const shell = useRef<THREE.Mesh>(null);
   const rings = useRef<THREE.Group>(null);
   const scanner = useRef<THREE.Mesh>(null);
+  const innerFrame = useRef<THREE.Group>(null);
 
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.05);
-    if (ref.current) ref.current.rotation.y += dt * 0.1;
-    if (shell.current) {
+    if (ref.current && !reduced) ref.current.rotation.y += dt * 0.1;
+    if (shell.current && !reduced) {
       shell.current.rotation.y -= dt * 0.22;
       shell.current.rotation.x += dt * 0.05;
     }
     if (inner.current) {
-      const breathe = 1 + Math.sin(state.clock.elapsedTime * 0.7) * 0.025;
+      const breathe = 1 + (reduced ? 0 : Math.sin(state.clock.elapsedTime * 0.7) * 0.025);
       inner.current.scale.setScalar(breathe * (active ? 1.05 : 1));
     }
-    if (rings.current) {
+    if (rings.current && !reduced) {
       rings.current.rotation.x += dt * (active ? 0.22 : 0.08);
       rings.current.rotation.z -= dt * (active ? 0.16 : 0.055);
     }
-    if (scanner.current) {
+    if (innerFrame.current && !reduced) innerFrame.current.rotation.y -= dt * 0.32;
+    if (scanner.current && !reduced) {
       scanner.current.rotation.z += dt * 0.38;
-      scanner.current.material.opacity = 0.035 + Math.sin(state.clock.elapsedTime * 1.4) * 0.012;
     }
   });
 
   return (
     <group ref={ref}>
       <mesh ref={inner}>
-        <icosahedronGeometry args={[0.9, 2]} />
+        <icosahedronGeometry args={[1.05, 2]} />
         <meshPhysicalMaterial
-          color="#11282f"
+          color="#19313a"
           emissive={ACCENT}
-          emissiveIntensity={active ? 0.35 : 0.22}
+          emissiveIntensity={active ? 0.22 : 0.15}
           metalness={0.82}
           roughness={0.16}
           clearcoat={0.8}
@@ -74,6 +75,16 @@ function Core({ active }: { active: boolean }) {
         <icosahedronGeometry args={[1.42, 1]} />
         <meshBasicMaterial color={ACCENT} wireframe transparent opacity={0.16} />
       </mesh>
+      <group ref={innerFrame}>
+        <mesh rotation={[Math.PI / 4, 0, Math.PI / 4]}>
+          <octahedronGeometry args={[1.12, 0]} />
+          <meshBasicMaterial color={SIGNAL} wireframe transparent opacity={0.31} depthWrite={false} />
+        </mesh>
+        <mesh rotation={[0, Math.PI / 4, Math.PI / 4]}>
+          <octahedronGeometry args={[0.72, 0]} />
+          <meshBasicMaterial color={AMBER} wireframe transparent opacity={0.28} depthWrite={false} />
+        </mesh>
+      </group>
       <group ref={rings}>
         <mesh rotation={[Math.PI / 2, 0.25, 0]}>
           <torusGeometry args={[1.72, 0.012, 5, 96]} />
@@ -103,7 +114,7 @@ function Core({ active }: { active: boolean }) {
         <sphereGeometry args={[0.34, 20, 20]} />
         <meshBasicMaterial color={SIGNAL} transparent opacity={0.18} depthWrite={false} />
       </mesh>
-      <pointLight position={[0, 0, 0]} intensity={11} distance={15} color={ACCENT} />
+      <pointLight position={[0, 0, 0]} intensity={3} distance={8} color={ACCENT} />
     </group>
   );
 }
@@ -113,15 +124,20 @@ function Connection({
   highlighted,
   dimmed,
   particles,
+  reduced,
+  seed,
 }: {
   curve: THREE.QuadraticBezierCurve3;
   highlighted: boolean;
   dimmed: boolean;
   particles: number;
+  reduced: boolean;
+  seed: number;
 }) {
   const points = useMemo(() => curve.getPoints(32), [curve]);
   const dots = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const axis = useMemo(() => new THREE.Vector3(1, 0, 0), []);
   const offsets = useMemo(
     () => Array.from({ length: particles }, (_, i) => i / particles),
     [particles],
@@ -129,13 +145,13 @@ function Connection({
 
   useFrame((state) => {
     if (!dots.current) return;
-    const t = state.clock.elapsedTime * (highlighted ? 0.34 : 0.16);
+    const t = reduced ? 0 : state.clock.elapsedTime * (highlighted ? 0.34 : 0.16) + seed * 0.13;
     offsets.forEach((offset, i) => {
       const p = curve.getPoint((t + offset) % 1);
       const tangent = curve.getTangent((t + offset) % 1);
       dummy.position.copy(p);
       dummy.scale.set(highlighted ? 0.12 : 0.065, highlighted ? 0.026 : 0.018, highlighted ? 0.026 : 0.018);
-      dummy.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), tangent.normalize());
+      dummy.quaternion.setFromUnitVectors(axis, tangent.normalize());
       dummy.updateMatrix();
       dots.current?.setMatrixAt(i, dummy.matrix);
     });
@@ -175,6 +191,7 @@ function Node({
   onSelect,
   seed,
   showLabel,
+  reduced,
 }: {
   position: THREE.Vector3;
   label: string;
@@ -184,18 +201,28 @@ function Node({
   onSelect: () => void;
   seed: number;
   showLabel: boolean;
+  reduced: boolean;
 }) {
   const ref = useRef<THREE.Group>(null);
   const halo = useRef<THREE.Mesh>(null);
+  const crystal = useRef<THREE.Mesh>(null);
+  const targetScale = useMemo(() => new THREE.Vector3(), []);
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     if (!ref.current) return;
     const t = state.clock.elapsedTime;
-    ref.current.position.y = Math.sin(t * 0.45 + seed) * 0.07;
-    ref.current.rotation.y += 0.0045;
+    ref.current.position.y = reduced ? 0 : Math.sin(t * 0.45 + seed) * 0.07;
+    if (!reduced) ref.current.rotation.y += Math.min(delta, 0.05) * 0.27;
     const target = highlighted ? 1.4 : 1;
-    ref.current.scale.lerp(new THREE.Vector3(target, target, target), 0.12);
-    if (halo.current) halo.current.rotation.z -= 0.012;
+    ref.current.scale.lerp(targetScale.setScalar(target), 1 - Math.exp(-8 * Math.min(delta, 0.05)));
+    if (halo.current && !reduced) halo.current.rotation.z -= Math.min(delta, 0.05) * 0.72;
+    if (crystal.current) {
+      const material = crystal.current.material;
+      if (material instanceof THREE.MeshStandardMaterial) {
+        const sweep = Math.pow(Math.max(0, Math.cos(t * 1.05 - seed * 0.78)), 8);
+        material.emissiveIntensity = highlighted ? 1.65 : dimmed ? 0.1 : 0.3 + (reduced ? 0 : sweep * 0.7);
+      }
+    }
   });
 
   return (
@@ -213,12 +240,12 @@ function Node({
           onSelect();
         }}
       >
-        <mesh>
+        <mesh ref={crystal}>
           <octahedronGeometry args={[0.26, 0]} />
           <meshStandardMaterial
             color="#0c151a"
             emissive={highlighted ? SIGNAL : ACCENT}
-            emissiveIntensity={highlighted ? 1.6 : dimmed ? 0.14 : 0.4}
+            emissiveIntensity={highlighted ? 1.65 : dimmed ? 0.1 : 0.3}
             metalness={0.65}
             roughness={0.28}
           />
@@ -253,7 +280,7 @@ function Node({
 }
 
 function Rig({ focus, reduced }: { focus: THREE.Vector3 | null; reduced: boolean }) {
-  const { camera, pointer } = useThree();
+  const { camera, pointer, size } = useThree();
   const target = useMemo(() => new THREE.Vector3(), []);
   const look = useMemo(() => new THREE.Vector3(), []);
   const lookTarget = useMemo(() => new THREE.Vector3(), []);
@@ -265,14 +292,16 @@ function Rig({ focus, reduced }: { focus: THREE.Vector3 | null; reduced: boolean
     smooth.current.x += (pointer.x - smooth.current.x) * 0.05;
     smooth.current.y += (pointer.y - smooth.current.y) * 0.05;
     if (focus) {
-      target.set(focus.x * 1.55, focus.y * 1.4 + 1.1, focus.z * 1.55 + 3.6);
-      lookTarget.copy(focus).multiplyScalar(0.45);
+      const depth = Math.max(9.6, Math.min(18, 5.5 / Math.max(0.4, size.width / size.height)));
+      target.set(focus.x * 0.52, 1.05 + focus.y * 0.38, depth - 2.2);
+      lookTarget.copy(focus).multiplyScalar(0.22);
     } else {
       const px = reduced ? 0 : smooth.current.x;
       const py = reduced ? 0 : smooth.current.y;
       const entrance = reduced ? 0 : Math.max(0, 1 - state.clock.elapsedTime / 2.4);
       const drift = reduced ? 0 : Math.sin(state.clock.elapsedTime * 0.16) * 0.18;
-      target.set(px * 1.25 + drift, 1.05 + py * 0.58, 8.8 + entrance * 2.6);
+      const depth = Math.max(9.6, Math.min(18, 5.5 / Math.max(0.4, size.width / size.height)));
+      target.set(px * 0.85 + drift, 1.05 + py * 0.42, depth + entrance * 2.6);
       lookTarget.set(px * 0.2, py * 0.1, 0);
     }
     camera.position.lerp(target, damping);
@@ -298,7 +327,7 @@ function Scene({
   reduced: boolean;
 }) {
   const ring = useRef<THREE.Group>(null);
-  const nodes = useMemo(() => nodePositions(2.7), []);
+  const nodes = useMemo(() => nodePositions(2.4), []);
   const curves = useMemo(
     () =>
       nodes.map(({ pos }) => {
@@ -326,12 +355,12 @@ function Scene({
       <ambientLight intensity={0.42} />
       <directionalLight position={[5, 6, 4]} intensity={1.15} color="#9fd4e6" />
       <directionalLight position={[-6, -2, -4]} intensity={0.48} color="#6f8ea8" />
-      <spotLight position={[0, 7, 3]} intensity={18} angle={0.34} penumbra={0.9} color={ACCENT} />
+      <spotLight position={[0, 7, 3]} intensity={9} angle={0.34} penumbra={0.9} color={ACCENT} />
       <Environment resolution={64}>
         <Lightformer intensity={2.2} color="#b8f3ff" position={[0, 4, 2]} scale={[5, 1, 1]} />
         <Lightformer intensity={1.2} color="#efad63" position={[-4, -1, 1]} rotation-y={Math.PI / 2} scale={[4, 1, 1]} />
       </Environment>
-      <Core active={Boolean(active)} />
+      <Core active={Boolean(active)} reduced={reduced} />
       <group ref={ring}>
         {nodes.map(({ cap, pos }, i) => (
           <group key={cap.id}>
@@ -340,6 +369,8 @@ function Scene({
               highlighted={active === cap.id}
               dimmed={Boolean(active) && active !== cap.id}
               particles={particles}
+              reduced={reduced}
+              seed={i}
             />
             <Node
               position={pos}
@@ -348,6 +379,7 @@ function Scene({
               highlighted={active === cap.id}
               dimmed={Boolean(active) && active !== cap.id}
               showLabel={quality === "high"}
+              reduced={reduced}
               onHover={(h) => setHovered(h ? cap.id : null)}
               onSelect={() => setSelected(selected === cap.id ? null : cap.id)}
             />
@@ -383,7 +415,7 @@ export default function ControlCoreScene({
 
   return (
     <Canvas
-      camera={{ position: [0, 1.1, 8.8], fov: 50 }}
+      camera={{ position: [0, 1.1, 12.7], fov: 48 }}
       dpr={[1, quality === "high" ? 1.6 : 1]}
       gl={{ antialias: quality === "high", powerPreference: "high-performance" }}
       frameloop={active ? "always" : "demand"}
