@@ -27,7 +27,7 @@ function nodePositions(radius: number) {
   });
 }
 
-function Core({ active }: { active: boolean }) {
+function Core({ active, reduced }: { active: boolean; reduced: boolean }) {
   const ref = useRef<THREE.Group>(null);
   const inner = useRef<THREE.Mesh>(null);
   const shell = useRef<THREE.Mesh>(null);
@@ -36,22 +36,21 @@ function Core({ active }: { active: boolean }) {
 
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.05);
-    if (ref.current) ref.current.rotation.y += dt * 0.1;
-    if (shell.current) {
+    if (ref.current && !reduced) ref.current.rotation.y += dt * 0.1;
+    if (shell.current && !reduced) {
       shell.current.rotation.y -= dt * 0.22;
       shell.current.rotation.x += dt * 0.05;
     }
     if (inner.current) {
-      const breathe = 1 + Math.sin(state.clock.elapsedTime * 0.7) * 0.025;
+      const breathe = 1 + (reduced ? 0 : Math.sin(state.clock.elapsedTime * 0.7) * 0.025);
       inner.current.scale.setScalar(breathe * (active ? 1.05 : 1));
     }
-    if (rings.current) {
+    if (rings.current && !reduced) {
       rings.current.rotation.x += dt * (active ? 0.22 : 0.08);
       rings.current.rotation.z -= dt * (active ? 0.16 : 0.055);
     }
-    if (scanner.current) {
+    if (scanner.current && !reduced) {
       scanner.current.rotation.z += dt * 0.38;
-      scanner.current.material.opacity = 0.035 + Math.sin(state.clock.elapsedTime * 1.4) * 0.012;
     }
   });
 
@@ -113,11 +112,13 @@ function Connection({
   highlighted,
   dimmed,
   particles,
+  reduced,
 }: {
   curve: THREE.QuadraticBezierCurve3;
   highlighted: boolean;
   dimmed: boolean;
   particles: number;
+  reduced: boolean;
 }) {
   const points = useMemo(() => curve.getPoints(32), [curve]);
   const dots = useRef<THREE.InstancedMesh>(null);
@@ -129,7 +130,7 @@ function Connection({
 
   useFrame((state) => {
     if (!dots.current) return;
-    const t = state.clock.elapsedTime * (highlighted ? 0.34 : 0.16);
+    const t = reduced ? 0 : state.clock.elapsedTime * (highlighted ? 0.34 : 0.16);
     offsets.forEach((offset, i) => {
       const p = curve.getPoint((t + offset) % 1);
       const tangent = curve.getTangent((t + offset) % 1);
@@ -175,6 +176,7 @@ function Node({
   onSelect,
   seed,
   showLabel,
+  reduced,
 }: {
   position: THREE.Vector3;
   label: string;
@@ -184,6 +186,7 @@ function Node({
   onSelect: () => void;
   seed: number;
   showLabel: boolean;
+  reduced: boolean;
 }) {
   const ref = useRef<THREE.Group>(null);
   const halo = useRef<THREE.Mesh>(null);
@@ -191,11 +194,11 @@ function Node({
   useFrame((state) => {
     if (!ref.current) return;
     const t = state.clock.elapsedTime;
-    ref.current.position.y = Math.sin(t * 0.45 + seed) * 0.07;
-    ref.current.rotation.y += 0.0045;
+    ref.current.position.y = reduced ? 0 : Math.sin(t * 0.45 + seed) * 0.07;
+    if (!reduced) ref.current.rotation.y += 0.0045;
     const target = highlighted ? 1.4 : 1;
     ref.current.scale.lerp(new THREE.Vector3(target, target, target), 0.12);
-    if (halo.current) halo.current.rotation.z -= 0.012;
+    if (halo.current && !reduced) halo.current.rotation.z -= 0.012;
   });
 
   return (
@@ -331,7 +334,7 @@ function Scene({
         <Lightformer intensity={2.2} color="#b8f3ff" position={[0, 4, 2]} scale={[5, 1, 1]} />
         <Lightformer intensity={1.2} color="#efad63" position={[-4, -1, 1]} rotation-y={Math.PI / 2} scale={[4, 1, 1]} />
       </Environment>
-      <Core active={Boolean(active)} />
+      <Core active={Boolean(active)} reduced={reduced} />
       <group ref={ring}>
         {nodes.map(({ cap, pos }, i) => (
           <group key={cap.id}>
@@ -340,6 +343,7 @@ function Scene({
               highlighted={active === cap.id}
               dimmed={Boolean(active) && active !== cap.id}
               particles={particles}
+              reduced={reduced}
             />
             <Node
               position={pos}
@@ -348,6 +352,7 @@ function Scene({
               highlighted={active === cap.id}
               dimmed={Boolean(active) && active !== cap.id}
               showLabel={quality === "high"}
+              reduced={reduced}
               onHover={(h) => setHovered(h ? cap.id : null)}
               onSelect={() => setSelected(selected === cap.id ? null : cap.id)}
             />
