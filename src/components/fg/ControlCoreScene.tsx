@@ -59,11 +59,11 @@ function Core({ active, reduced }: { active: boolean; reduced: boolean }) {
   return (
     <group ref={ref}>
       <mesh ref={inner}>
-        <icosahedronGeometry args={[0.9, 2]} />
+        <icosahedronGeometry args={[1.05, 2]} />
         <meshPhysicalMaterial
-          color="#09151b"
+          color="#19313a"
           emissive={ACCENT}
-          emissiveIntensity={active ? 0.12 : 0.07}
+          emissiveIntensity={active ? 0.22 : 0.15}
           metalness={0.82}
           roughness={0.16}
           clearcoat={0.8}
@@ -299,7 +299,7 @@ function Rig({ focus, reduced }: { focus: THREE.Vector3 | null; reduced: boolean
       const py = reduced ? 0 : smooth.current.y;
       const entrance = reduced ? 0 : Math.max(0, 1 - state.clock.elapsedTime / 2.4);
       const drift = reduced ? 0 : Math.sin(state.clock.elapsedTime * 0.16) * 0.18;
-      const depth = Math.max(9.6, Math.min(18, 6.5 / Math.max(0.4, size.width / size.height)));
+      const depth = Math.max(9.6, Math.min(18, 5.5 / Math.max(0.4, size.width / size.height)));
       target.set(px * 0.85 + drift, 1.05 + py * 0.42, depth + entrance * 2.6);
       lookTarget.set(px * 0.2, py * 0.1, 0);
     }
@@ -326,7 +326,7 @@ function Scene({
   reduced: boolean;
 }) {
   const ring = useRef<THREE.Group>(null);
-  const nodes = useMemo(() => nodePositions(2.55), []);
+  const nodes = useMemo(() => nodePositions(2.4), []);
   const curves = useMemo(
     () =>
       nodes.map(({ pos }) => {
