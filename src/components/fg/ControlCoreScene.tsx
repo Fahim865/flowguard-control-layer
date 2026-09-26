@@ -292,8 +292,9 @@ function Rig({ focus, reduced }: { focus: THREE.Vector3 | null; reduced: boolean
     smooth.current.x += (pointer.x - smooth.current.x) * 0.05;
     smooth.current.y += (pointer.y - smooth.current.y) * 0.05;
     if (focus) {
-      target.set(focus.x * 1.55, focus.y * 1.4 + 1.1, focus.z * 1.55 + 3.6);
-      lookTarget.copy(focus).multiplyScalar(0.45);
+      const depth = Math.max(9.6, Math.min(18, 5.5 / Math.max(0.4, size.width / size.height)));
+      target.set(focus.x * 0.52, 1.05 + focus.y * 0.38, depth - 2.2);
+      lookTarget.copy(focus).multiplyScalar(0.22);
     } else {
       const px = reduced ? 0 : smooth.current.x;
       const py = reduced ? 0 : smooth.current.y;
