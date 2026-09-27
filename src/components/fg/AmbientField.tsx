@@ -37,13 +37,13 @@ export function AmbientField({
   }, []);
 
   return (
-    <div ref={ref} aria-hidden className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}>
+    <div ref={ref} aria-hidden="true" className={`pointer-events-none absolute inset-0 overflow-hidden opacity-70 ${className}`}>
       {enabled && visible ? (
         <Suspense fallback={null}>
           <Scene variant={variant} />
         </Suspense>
       ) : (
-        <div className="absolute inset-0 opacity-40 [background:radial-gradient(60%_80%_at_80%_20%,color-mix(in_oklab,var(--color-primary)_18%,transparent),transparent_70%)]" />
+        <div className="absolute inset-0 opacity-30 [background:repeating-linear-gradient(110deg,transparent_0px,transparent_34px,var(--color-primary)_35px,transparent_36px)]" />
       )}
     </div>
   );
