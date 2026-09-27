@@ -1,0 +1,3 @@
+- [ ] Add one-request, organization-scoped AI incident diagnosis from selected events and evidence.
+- [ ] Refine dashboard and incident 3D transitions without affecting content readability or reduced motion.
+- [ ] Verify authenticated diagnosis and desktop/mobile rendering.
