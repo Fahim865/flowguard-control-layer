@@ -1,5 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { streamText } from "ai";
+import { APICallError, streamText } from "ai";
 
 type Material = {
   incident: { title: string; category: string; severity: string; status: string; summary: string | null };
@@ -39,13 +39,16 @@ export async function generateIncidentDiagnosis(material: Material) {
     if (!text) throw new Error("The AI returned no diagnosis. Please try again later.");
     return { text };
   } catch (error) {
-    const status = (error as { statusCode?: number; status?: number }).statusCode ??
-      (error as { status?: number }).status;
+    const status = APICallError.isInstance(error) ? error.statusCode : undefined;
+    const safeMessage = APICallError.isInstance(error) && typeof error.responseBody === "string"
+      ? (() => { try { const body = JSON.parse(error.responseBody); return typeof body.message === "string" ? body.message : typeof body.error?.message === "string" ? body.error.message : null; } catch { return null; } })()
+      : null;
     if (status === 402) throw new Error("AI credits are unavailable. Add credits before requesting another diagnosis.");
-    if (status === 403) throw new Error("AI access is currently blocked for this workspace. Contact your workspace administrator.");
+    if (status === 403) throw new Error(safeMessage ?? "AI access is currently blocked for this workspace. Contact your workspace administrator.");
     if (status === 429) throw new Error("AI is rate limited. Try again later.");
     if (status === 401) throw new Error("AI is not configured for this workspace.");
     if (status === 404) throw new Error("The AI model is not available for this workspace.");
+    if (status === 400) throw new Error(safeMessage ?? "This request could not be analyzed.");
     if (error instanceof Error && error.message === "The AI returned no diagnosis. Please try again later.") throw error;
     throw new Error("The diagnosis could not be generated. No recovery action was taken.");
   }
