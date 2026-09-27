@@ -28,11 +28,11 @@ function AppShell() {
   return (
     <div className="min-h-screen grid-bg">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur">
-        <nav className="mx-auto max-w-6xl px-5 h-14 flex items-center gap-6">
+        <nav className="mx-auto max-w-6xl px-5 min-h-14 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 sm:gap-x-6">
           <Link to="/" className="font-mono text-[11px] tracking-[0.2em] text-muted-foreground hover:text-foreground">
             FLOWGUARD
           </Link>
-          <ul className="flex items-center gap-1 text-sm">
+          <ul className="order-3 flex w-full items-center gap-1 text-sm sm:order-none sm:w-auto">
             {NAV.map((n) => (
               <li key={n.to}>
                 <Link
@@ -45,7 +45,7 @@ function AppShell() {
               </li>
             ))}
           </ul>
-          <button onClick={signOut} className="ml-auto text-xs text-muted-foreground hover:text-foreground">
+          <button onClick={signOut} className="ml-auto shrink-0 text-xs text-muted-foreground hover:text-foreground">
             Sign out
           </button>
         </nav>

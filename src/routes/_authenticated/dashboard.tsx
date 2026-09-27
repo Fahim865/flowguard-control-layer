@@ -56,9 +56,9 @@ function Dashboard({ m }: { m: Membership }) {
 
   return (
     <div className="space-y-8">
-      <header className="relative overflow-hidden rounded-xl glass-panel p-6">
+      <header className="relative isolate min-h-48 overflow-hidden rounded-md glass-panel p-6 sm:min-h-52">
         <AmbientField variant="grid" />
-        <div className="relative flex flex-wrap items-center gap-3">
+        <div className="relative z-10 flex flex-wrap items-center gap-3">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">{m.organizations?.name ?? "Organization"}</h1>
             <p className="text-sm text-muted-foreground">
