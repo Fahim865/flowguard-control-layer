@@ -1,9 +1,13 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { OrgGate } from "@/components/fg/OrgGate";
 import { AmbientField } from "@/components/fg/AmbientField";
 import { DemoTag, Panel } from "@/components/fg/ui";
+import { Button } from "@/components/ui/button";
+import { diagnoseIncident } from "@/lib/incident-diagnosis.functions";
 import { can, type Membership } from "@/lib/useOrg";
 
 export const Route = createFileRoute("/_authenticated/incidents/$incidentId")({
@@ -33,13 +37,14 @@ type Incident = {
 };
 type Workflow = { id: string; name: string; status: string; description: string | null };
 type Agent = { id: string; name: string; status: string; risk_score: number };
-type Ev = { id: string; action: string; risk_score: number; status: string; created_at: string };
+type Ev = { id: string; action: string; risk_score: number; status: string; created_at: string; agent_id: string | null; workflow_id: string | null };
 type Evidence = { id: string; source: string; evidence_type: string; confidence: number; captured_at: string };
 type Recovery = { id: string; action: string; state: string; note: string | null };
 type Audit = { id: string; action: string; detail: string | null; created_at: string };
 
 function IncidentDetail({ m }: { m: Membership }) {
   const { incidentId } = useParams({ from: "/_authenticated/incidents/$incidentId" });
+  const diagnose = useServerFn(diagnoseIncident);
   const [incident, setIncident] = useState<Incident | null>(null);
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [agent, setAgent] = useState<Agent | null>(null);
@@ -48,8 +53,19 @@ function IncidentDetail({ m }: { m: Membership }) {
   const [recovery, setRecovery] = useState<Recovery[]>([]);
   const [audit, setAudit] = useState<Audit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
+  const [selectedEvidence, setSelectedEvidence] = useState<string[]>([]);
+  const [notes, setNotes] = useState("");
+  const [diagnosis, setDiagnosis] = useState<string | null>(null);
+  const [diagnosisError, setDiagnosisError] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
   useEffect(() => {
+    let live = true;
+    setDiagnosis(null);
+    setDiagnosisError(null);
+    setSelectedEvents([]);
+    setSelectedEvidence([]);
     void (async () => {
       setLoading(true);
       const { data } = await supabase
@@ -59,6 +75,7 @@ function IncidentDetail({ m }: { m: Membership }) {
         .eq("org_id", m.org_id)
         .maybeSingle();
       const inc = (data as Incident) ?? null;
+      if (!live) return;
       setIncident(inc);
       if (inc) {
         const [w, a, e, ev, r, au] = await Promise.all([
@@ -70,7 +87,7 @@ function IncidentDetail({ m }: { m: Membership }) {
             : Promise.resolve({ data: null }),
           supabase
             .from("agent_events")
-            .select("id,action,risk_score,status,created_at")
+            .select("id,action,risk_score,status,created_at,agent_id,workflow_id")
             .eq("org_id", m.org_id)
             .order("created_at", { ascending: false })
             .limit(20),
@@ -88,17 +105,49 @@ function IncidentDetail({ m }: { m: Membership }) {
             .order("created_at", { ascending: false })
             .limit(10),
         ]);
+        if (!live) return;
         setWorkflow((w.data as Workflow) ?? null);
         setAgent((a.data as Agent) ?? null);
         const all = (e.data as Ev[]) ?? [];
-        setEvents(all.slice(0, 6));
-        setEvidence((ev.data as Evidence[]) ?? []);
+        const related = all.filter((event) =>
+          (inc.agent_id && event.agent_id === inc.agent_id) ||
+          (inc.workflow_id && event.workflow_id === inc.workflow_id),
+        ).slice(0, 6);
+        const items = (ev.data as Evidence[]) ?? [];
+        setEvents(related);
+        setSelectedEvents(related.map((event) => event.id));
+        setEvidence(items);
+        setSelectedEvidence(items.map((item) => item.id));
         setRecovery((r.data as Recovery[]) ?? []);
         setAudit((au.data as Audit[]) ?? []);
       }
-      setLoading(false);
+      if (live) setLoading(false);
     })();
+    return () => { live = false; };
   }, [incidentId, m.org_id]);
+
+  async function analyze() {
+    if (analyzing || !incident) return;
+    setAnalyzing(true);
+    setDiagnosisError(null);
+    setDiagnosis(null);
+    try {
+      const result = await diagnose({ data: {
+        orgId: m.org_id, incidentId: incident.id,
+        eventIds: selectedEvents, evidenceIds: selectedEvidence, notes,
+      } });
+      setDiagnosis(result.text);
+    } catch (error) {
+      setDiagnosisError(error instanceof Error ? error.message : "Diagnosis unavailable. No action was taken.");
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
+  function toggle(id: string, current: string[], update: (ids: string[]) => void) {
+    update(current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+    setDiagnosis(null);
+  }
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading incident…</p>;
   if (!incident)
@@ -113,9 +162,9 @@ function IncidentDetail({ m }: { m: Membership }) {
 
   return (
     <div className="space-y-6">
-      <header className="relative overflow-hidden rounded-xl glass-panel p-6">
+      <header className="relative isolate min-h-48 overflow-hidden rounded-md glass-panel p-6 sm:min-h-52">
         <AmbientField variant="pulse" />
-        <div className="relative">
+        <div className="relative z-10 max-w-2xl">
           <div className="flex flex-wrap items-center gap-3">
             <Link to="/dashboard" className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground">
               ← Dashboard
@@ -164,11 +213,13 @@ function IncidentDetail({ m }: { m: Membership }) {
         <ul className="mt-3 space-y-2">
           {events.map((e) => (
             <li key={e.id} className="flex items-center gap-3 text-sm">
+              {can.actOnIncidents(m.role) && <input type="checkbox" aria-label={`Include event: ${e.action}`} checked={selectedEvents.includes(e.id)} onChange={() => toggle(e.id, selectedEvents, setSelectedEvents)} className="accent-primary" />}
               <span className="truncate">{e.action}</span>
               <span className="ml-auto font-mono text-[11px] uppercase text-muted-foreground">{e.status}</span>
               <span className="font-mono text-xs tabular-nums">{e.risk_score}</span>
             </li>
           ))}
+          {events.length === 0 && <li className="text-xs text-muted-foreground">No related events recorded.</li>}
         </ul>
       </Panel>
 
@@ -177,6 +228,7 @@ function IncidentDetail({ m }: { m: Membership }) {
         <ul className="mt-3 space-y-2">
           {evidence.map((x) => (
             <li key={x.id} className="flex items-center gap-3 text-sm">
+              {can.actOnIncidents(m.role) && <input type="checkbox" aria-label={`Include evidence: ${x.source}`} checked={selectedEvidence.includes(x.id)} onChange={() => toggle(x.id, selectedEvidence, setSelectedEvidence)} className="accent-primary" />}
               <span className="truncate">{x.source}</span>
               <span className="ml-auto font-mono text-[11px] uppercase text-muted-foreground">{x.evidence_type}</span>
               <span className="font-mono text-xs tabular-nums">{x.confidence}%</span>
@@ -185,6 +237,29 @@ function IncidentDetail({ m }: { m: Membership }) {
           {evidence.length === 0 && <li className="text-xs text-muted-foreground">No evidence captured.</li>}
         </ul>
       </Panel>
+
+      {can.actOnIncidents(m.role) && (
+        <section aria-labelledby="ai-diagnosis-heading" className="space-y-4 border-t border-border pt-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 id="ai-diagnosis-heading" className="text-lg font-semibold">AI diagnosis &amp; recovery plan</h2>
+            <DemoTag />
+          </div>
+          <p className="text-sm text-muted-foreground">Selected events and evidence are analyzed on request. Recommendations require human review; nothing is executed.</p>
+          <label htmlFor="operator-notes" className="block text-xs font-medium text-muted-foreground">Operator context (optional)</label>
+          <textarea id="operator-notes" value={notes} maxLength={2000} onChange={(event) => { setNotes(event.target.value); setDiagnosis(null); }} rows={3} placeholder="Add observations relevant to this incident…" className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" onClick={analyze} disabled={analyzing || (selectedEvents.length === 0 && selectedEvidence.length === 0)}>
+              <Sparkles aria-hidden="true" />{analyzing ? "Analyzing…" : "Generate diagnosis"}
+            </Button>
+            <span className="text-xs text-muted-foreground">{selectedEvents.length} events · {selectedEvidence.length} evidence items selected · one AI request per click</span>
+          </div>
+          <div aria-live="polite" role="status">
+            {analyzing && <p className="text-sm text-muted-foreground">Reviewing selected material…</p>}
+            {diagnosisError && <p className="text-sm text-destructive">{diagnosisError}</p>}
+            {diagnosis && <div className="border-l-2 border-primary bg-surface p-5"><h3 className="mb-3 text-sm font-medium">For human review · not executed</h3><p className="whitespace-pre-wrap text-sm leading-7 text-foreground">{diagnosis}</p></div>}
+          </div>
+        </section>
+      )}
 
       <Panel className="p-5">
         <h2 className="text-sm font-medium">Recovery recommendations</h2>
