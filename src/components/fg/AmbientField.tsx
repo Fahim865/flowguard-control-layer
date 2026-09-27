@@ -37,13 +37,15 @@ export function AmbientField({
   }, []);
 
   return (
-    <div ref={ref} aria-hidden="true" className={`pointer-events-none absolute inset-0 overflow-hidden opacity-70 ${className}`}>
+    <div ref={ref} aria-hidden="true" className={`pointer-events-none absolute inset-0 overflow-hidden opacity-80 max-sm:opacity-35 [mask-image:linear-gradient(to_right,transparent_0%,transparent_40%,black_85%)] ${className}`}>
       {enabled && visible ? (
         <Suspense fallback={null}>
-          <Scene variant={variant} />
+          <div className="absolute inset-y-0 right-0 w-[80%] sm:w-[58%]">
+            <Scene variant={variant} />
+          </div>
         </Suspense>
       ) : (
-        <div className="absolute inset-0 opacity-30 [background:repeating-linear-gradient(110deg,transparent_0px,transparent_34px,var(--color-primary)_35px,transparent_36px)]" />
+        <div className="absolute inset-y-0 right-0 w-1/2 border-l border-primary/20 opacity-30 [background:repeating-linear-gradient(110deg,transparent_0px,transparent_34px,var(--color-primary)_35px,transparent_36px)]" />
       )}
     </div>
   );
