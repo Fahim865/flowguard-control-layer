@@ -15,6 +15,13 @@
       "when": 1789998907742,
       "tag": "0001_org_invitations",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790855452031,
+      "tag": "0002_incident_audit_triggers",
+      "breakpoints": true
     }
   ]
 }
