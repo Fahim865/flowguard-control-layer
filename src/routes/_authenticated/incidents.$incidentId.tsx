@@ -181,7 +181,8 @@ function IncidentDetail({ m }: { m: Membership }) {
     const r = reviews[i] ?? { status: "accepted" as ReviewStatus, note: "", saved: false };
     const { data: auth } = await supabase.auth.getUser();
     const step = steps[i]; if (!step) return;
-    const detail = `Incident ${incident.id} · ${step.section} step ${step.n}: ${r.status.toUpperCase()}${r.note.trim() ? ` — ${r.note.trim()}` : ""}`.slice(0, 1000);
+    const reviewer = auth.user?.email ?? "unknown reviewer";
+    const detail = `Incident ${incident.id} · ${step.section} step ${step.n}: ${r.status.toUpperCase()} by ${reviewer} at ${new Date().toISOString()}${r.note.trim() ? ` — ${r.note.trim()}` : ""}`.slice(0, 1000);
     const { data: row, error } = await supabase.from("audit_logs")
       .insert({ org_id: m.org_id, actor_id: auth.user?.id ?? null, action: "ai_review", detail })
       .select("id,action,detail,created_at").single();
@@ -223,6 +224,13 @@ function IncidentDetail({ m }: { m: Membership }) {
       return `- ${s.section} ${s.n}: ${r ? r.status.toUpperCase() + (r.saved ? "" : " (not recorded)") : "NOT REVIEWED"}${r?.note.trim() ? ` - ${r.note.trim()}` : ""}`;
     }).join("\n") : "No review steps.");
     if (notes.trim()) { write("Operator context", 13, true); write(notes.trim()); }
+    const { data: timeline } = await supabase.from("audit_logs")
+      .select("action,detail,created_at").eq("org_id", m.org_id)
+      .like("detail", `Incident ${incident.id}%`).order("created_at");
+    write("Incident audit timeline", 13, true);
+    write(timeline?.length
+      ? timeline.map((a) => `- ${new Date(a.created_at).toISOString()} [${a.action}] ${a.detail ?? ""}`).join("\n")
+      : "No recorded review decisions.");
     doc.save(`flowguard-incident-${incident.id.slice(0, 8)}.pdf`);
   }
 
