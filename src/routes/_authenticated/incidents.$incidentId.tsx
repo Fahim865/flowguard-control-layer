@@ -56,7 +56,7 @@ function parseSteps(text: string | null): Step[] {
     else if (head === "recovery plan") section = "Recovery plan";
     else if (head === "evidence gaps") section = "Evidence gaps";
     const match = line.match(/^(\d+)[.)]\s+(.*)$/);
-    if (match && section !== "Evidence gaps") out.push({ section, n: match[1], text: match[2] });
+    if (match && section !== "Evidence gaps") out.push({ section, n: match[1] ?? "", text: match[2] ?? "" });
   }
   return out;
 }
@@ -180,7 +180,8 @@ function IncidentDetail({ m }: { m: Membership }) {
     if (!incident) return;
     const r = reviews[i] ?? { status: "accepted" as ReviewStatus, note: "", saved: false };
     const { data: auth } = await supabase.auth.getUser();
-    const detail = `Incident ${incident.id} · ${steps[i].section} step ${steps[i].n}: ${r.status.toUpperCase()}${r.note.trim() ? ` — ${r.note.trim()}` : ""}`.slice(0, 1000);
+    const step = steps[i]; if (!step) return;
+    const detail = `Incident ${incident.id} · ${step.section} step ${step.n}: ${r.status.toUpperCase()}${r.note.trim() ? ` — ${r.note.trim()}` : ""}`.slice(0, 1000);
     const { data: row, error } = await supabase.from("audit_logs")
       .insert({ org_id: m.org_id, actor_id: auth.user?.id ?? null, action: "ai_review", detail })
       .select("id,action,detail,created_at").single();
