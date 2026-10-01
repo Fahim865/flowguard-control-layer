@@ -41,6 +41,25 @@ type Ev = { id: string; action: string; risk_score: number; status: string; crea
 type Evidence = { id: string; source: string; evidence_type: string; confidence: number; captured_at: string };
 type Recovery = { id: string; action: string; state: string; note: string | null };
 type Audit = { id: string; action: string; detail: string | null; created_at: string };
+type ReviewStatus = "accepted" | "rejected" | "resolved";
+type Review = { status: ReviewStatus; note: string; saved: boolean };
+type Step = { section: string; n: string; text: string };
+
+function parseSteps(text: string | null): Step[] {
+  if (!text) return [];
+  const out: Step[] = [];
+  let section = "Diagnosis";
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+    const head = line.replace(/[*#:]/g, "").trim().toLowerCase();
+    if (head === "diagnosis") section = "Diagnosis";
+    else if (head === "recovery plan") section = "Recovery plan";
+    else if (head === "evidence gaps") section = "Evidence gaps";
+    const match = line.match(/^(\d+)[.)]\s+(.*)$/);
+    if (match && section !== "Evidence gaps") out.push({ section, n: match[1], text: match[2] });
+  }
+  return out;
+}
 
 function IncidentDetail({ m }: { m: Membership }) {
   const { incidentId } = useParams({ from: "/_authenticated/incidents/$incidentId" });
@@ -59,6 +78,9 @@ function IncidentDetail({ m }: { m: Membership }) {
   const [diagnosis, setDiagnosis] = useState<string | null>(null);
   const [diagnosisError, setDiagnosisError] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [reviews, setReviews] = useState<Record<number, Review>>({});
+
+  useEffect(() => { setReviews({}); }, [diagnosis]);
 
   useEffect(() => {
     let live = true;
@@ -147,6 +169,60 @@ function IncidentDetail({ m }: { m: Membership }) {
   function toggle(id: string, current: string[], update: (ids: string[]) => void) {
     update(current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
     setDiagnosis(null);
+  }
+
+  const steps = parseSteps(diagnosis);
+  function setReview(i: number, patch: Partial<Review>) {
+    setReviews((prev) => ({ ...prev, [i]: { status: "accepted", note: "", saved: false, ...prev[i], ...patch } }));
+  }
+
+  async function recordReview(i: number) {
+    if (!incident) return;
+    const r = reviews[i] ?? { status: "accepted" as ReviewStatus, note: "", saved: false };
+    const { data: auth } = await supabase.auth.getUser();
+    const detail = `Incident ${incident.id} · ${steps[i].section} step ${steps[i].n}: ${r.status.toUpperCase()}${r.note.trim() ? ` — ${r.note.trim()}` : ""}`.slice(0, 1000);
+    const { data: row, error } = await supabase.from("audit_logs")
+      .insert({ org_id: m.org_id, actor_id: auth.user?.id ?? null, action: "ai_review", detail })
+      .select("id,action,detail,created_at").single();
+    if (error) { window.alert("Could not record review."); return; }
+    setReview(i, { saved: true });
+    setAudit((prev) => [row as Audit, ...prev].slice(0, 10));
+  }
+
+  async function exportPdf() {
+    if (!incident || !diagnosis) return;
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const W = doc.internal.pageSize.getWidth() - 96;
+    let y = 56;
+    const write = (text: string, size = 10, bold = false) => {
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.setFontSize(size);
+      for (const line of doc.splitTextToSize(text.replace(/[^\x20-\x7E\n]/g, "-"), W) as string[]) {
+        if (y > 790) { doc.addPage(); y = 56; }
+        doc.text(line, 48, y);
+        y += size * 1.45;
+      }
+      y += 4;
+    };
+    write("FlowGuard incident report", 18, true);
+    write(`${incident.title} | ${incident.category} | ${incident.severity} | ${incident.status}`, 10);
+    write(`Generated ${new Date().toLocaleString()} - DEMO DATA - for human review, nothing executed`, 9);
+    write("AI diagnosis and recovery plan", 13, true);
+    write(diagnosis);
+    write("Selected evidence", 13, true);
+    const ev = evidence.filter((x) => selectedEvidence.includes(x.id));
+    write(ev.length ? ev.map((x) => `- ${x.source} (${x.evidence_type}, ${x.confidence}%)`).join("\n") : "None selected.");
+    write("Selected events", 13, true);
+    const evs = events.filter((x) => selectedEvents.includes(x.id));
+    write(evs.length ? evs.map((x) => `- ${x.action} (${x.status}, risk ${x.risk_score})`).join("\n") : "None selected.");
+    write("Human review", 13, true);
+    write(steps.length ? steps.map((s, i) => {
+      const r = reviews[i];
+      return `- ${s.section} ${s.n}: ${r ? r.status.toUpperCase() + (r.saved ? "" : " (not recorded)") : "NOT REVIEWED"}${r?.note.trim() ? ` - ${r.note.trim()}` : ""}`;
+    }).join("\n") : "No review steps.");
+    if (notes.trim()) { write("Operator context", 13, true); write(notes.trim()); }
+    doc.save(`flowguard-incident-${incident.id.slice(0, 8)}.pdf`);
   }
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading incident…</p>;
@@ -257,6 +333,31 @@ function IncidentDetail({ m }: { m: Membership }) {
             {analyzing && <p className="text-sm text-muted-foreground">Reviewing selected material…</p>}
             {diagnosisError && <p className="text-sm text-destructive">{diagnosisError}</p>}
             {diagnosis && <div className="border-l-2 border-primary bg-surface p-5"><h3 className="mb-3 text-sm font-medium">For human review · not executed</h3><p className="whitespace-pre-wrap text-sm leading-7 text-foreground">{diagnosis}</p></div>}
+          </div>
+          {diagnosis && (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <h3 className="text-sm font-medium">Human review</h3>
+                <Button type="button" variant="outline" size="sm" className="ml-auto" onClick={exportPdf}>Export PDF report</Button>
+              </div>
+              {steps.map((step, i) => {
+                const r = reviews[i] ?? { status: "accepted", note: "", saved: false };
+                return (
+                  <div key={i} className="space-y-2 rounded-md border border-border p-3">
+                    <p className="text-sm"><span className="font-mono text-[11px] uppercase text-muted-foreground">{step.section} · </span>{step.text}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select aria-label={`Review status for step ${i + 1}`} value={r.status} onChange={(e) => setReview(i, { status: e.target.value as ReviewStatus, saved: false })} className="rounded-md border border-border bg-surface px-2 py-1 text-xs">
+                        <option value="accepted">Accepted</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="resolved">Resolved</option>
+                      </select>
+                      <input aria-label={`Review note for step ${i + 1}`} value={r.note} maxLength={500} onChange={(e) => setReview(i, { note: e.target.value, saved: false })} placeholder="Review note…" className="min-w-40 flex-1 rounded-md border border-border bg-surface px-2 py-1 text-xs" />
+                      <Button type="button" size="sm" variant="secondary" disabled={r.saved} onClick={() => recordReview(i)}>{r.saved ? "Recorded" : "Record"}</Button>
+                    </div>
+                  </div>
+                );
+              })}
+              {steps.length === 0 && <p className="text-xs text-muted-foreground">No numbered steps were found in this diagnosis.</p>}
           </div>
         </section>
       )}
