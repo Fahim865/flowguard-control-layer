@@ -358,7 +358,8 @@ function IncidentDetail({ m }: { m: Membership }) {
                 );
               })}
               {steps.length === 0 && <p className="text-xs text-muted-foreground">No numbered steps were found in this diagnosis.</p>}
-          </div>
+            </div>
+          )}
         </section>
       )}
 
