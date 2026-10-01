@@ -482,6 +482,7 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: { _token: string }; Returns: string }
+      actor_label: { Args: never; Returns: string }
       has_org_role: {
         Args: {
           _org: string
