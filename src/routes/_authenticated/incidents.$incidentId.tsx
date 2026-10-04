@@ -124,8 +124,9 @@ function IncidentDetail({ m }: { m: Membership }) {
             .from("audit_logs")
             .select("id,action,detail,created_at")
             .eq("org_id", m.org_id)
+            .like("detail", `Incident ${inc.id}%`)
             .order("created_at", { ascending: false })
-            .limit(10),
+            .limit(50),
         ]);
         if (!live) return;
         setWorkflow((w.data as Workflow) ?? null);
@@ -181,7 +182,8 @@ function IncidentDetail({ m }: { m: Membership }) {
     const r = reviews[i] ?? { status: "accepted" as ReviewStatus, note: "", saved: false };
     const { data: auth } = await supabase.auth.getUser();
     const step = steps[i]; if (!step) return;
-    const reviewer = auth.user?.email ?? "unknown reviewer";
+    const meta = auth.user?.user_metadata ?? {};
+    const reviewer = (meta["full_name"] || meta["name"] || auth.user?.email || "unknown reviewer") as string;
     const detail = `Incident ${incident.id} · ${step.section} step ${step.n}: ${r.status.toUpperCase()} by ${reviewer} at ${new Date().toISOString()}${r.note.trim() ? ` — ${r.note.trim()}` : ""}`.slice(0, 1000);
     const { data: row, error } = await supabase.from("audit_logs")
       .insert({ org_id: m.org_id, actor_id: auth.user?.id ?? null, action: "ai_review", detail })
@@ -189,6 +191,17 @@ function IncidentDetail({ m }: { m: Membership }) {
     if (error) { window.alert("Could not record review."); return; }
     setReview(i, { saved: true });
     setAudit((prev) => [row as Audit, ...prev].slice(0, 10));
+  }
+
+  async function changeStatus(status: string) {
+    if (!incident || status === incident.status) return;
+    const { error } = await supabase.from("incidents").update({ status }).eq("id", incident.id).eq("org_id", m.org_id);
+    if (error) { window.alert("Could not update status."); return; }
+    setIncident({ ...incident, status });
+    const { data } = await supabase.from("audit_logs").select("id,action,detail,created_at")
+      .eq("org_id", m.org_id).like("detail", `Incident ${incident.id}%`)
+      .order("created_at", { ascending: false }).limit(50);
+    setAudit((data as Audit[]) ?? []);
   }
 
   async function exportPdf() {
@@ -260,6 +273,14 @@ function IncidentDetail({ m }: { m: Membership }) {
           <p className="mt-1 font-mono text-[11px] uppercase text-muted-foreground">
             {incident.category} · {incident.severity} · {incident.status} · {new Date(incident.created_at).toLocaleString()}
           </p>
+          {can.actOnIncidents(m.role) && (
+            <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+              Status
+              <select aria-label="Incident status" value={incident.status} onChange={(e) => void changeStatus(e.target.value)} className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground">
+                {["open", "investigating", "mitigated", "resolved"].map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+          )}
           {incident.summary && <p className="mt-3 max-w-2xl text-sm text-muted-foreground">{incident.summary}</p>}
         </div>
       </header>
@@ -395,7 +416,8 @@ function IncidentDetail({ m }: { m: Membership }) {
 
       {can.viewAudit(m.role) && (
         <Panel className="p-5">
-          <h2 className="text-sm font-medium">Organization audit history</h2>
+          <h2 className="text-sm font-medium">Incident audit timeline</h2>
+          {audit.length === 0 && <p className="mt-3 text-xs text-muted-foreground">No recorded changes or decisions yet.</p>}
           <ul className="mt-3 space-y-2">
             {audit.map((a) => (
               <li key={a.id} className="flex gap-3 text-sm">
