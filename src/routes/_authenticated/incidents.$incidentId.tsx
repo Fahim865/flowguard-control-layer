@@ -193,6 +193,17 @@ function IncidentDetail({ m }: { m: Membership }) {
     setAudit((prev) => [row as Audit, ...prev].slice(0, 10));
   }
 
+  async function changeStatus(status: string) {
+    if (!incident || status === incident.status) return;
+    const { error } = await supabase.from("incidents").update({ status }).eq("id", incident.id).eq("org_id", m.org_id);
+    if (error) { window.alert("Could not update status."); return; }
+    setIncident({ ...incident, status });
+    const { data } = await supabase.from("audit_logs").select("id,action,detail,created_at")
+      .eq("org_id", m.org_id).like("detail", `Incident ${incident.id}%`)
+      .order("created_at", { ascending: false }).limit(50);
+    setAudit((data as Audit[]) ?? []);
+  }
+
   async function exportPdf() {
     if (!incident || !diagnosis) return;
     const { jsPDF } = await import("jspdf");
