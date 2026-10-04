@@ -41,6 +41,8 @@ type Ev = { id: string; action: string; risk_score: number; status: string; crea
 type Evidence = { id: string; source: string; evidence_type: string; confidence: number; captured_at: string };
 type Recovery = { id: string; action: string; state: string; note: string | null };
 type Audit = { id: string; action: string; detail: string | null; created_at: string };
+type EvidenceDraft = { id: string | null; source: string; evidence_type: string; confidence: number };
+const blankEvidence: EvidenceDraft = { id: null, source: "", evidence_type: "log", confidence: 80 };
 type ReviewStatus = "accepted" | "rejected" | "resolved";
 type Review = { status: ReviewStatus; note: string; saved: boolean };
 type Step = { section: string; n: string; text: string };
@@ -193,6 +195,48 @@ function IncidentDetail({ m }: { m: Membership }) {
     setAudit((prev) => [row as Audit, ...prev].slice(0, 10));
   }
 
+  async function refreshAudit() {
+    if (!incident) return;
+    const { data } = await supabase.from("audit_logs").select("id,action,detail,created_at")
+      .eq("org_id", m.org_id).like("detail", `Incident ${incident.id}%`)
+      .order("created_at", { ascending: false }).limit(50);
+    setAudit((data as Audit[]) ?? []);
+  }
+
+  async function reloadEvidence() {
+    if (!incident) return;
+    const { data } = await supabase.from("evidence_items").select("id,source,evidence_type,confidence,captured_at")
+      .eq("org_id", m.org_id).eq("incident_id", incident.id).order("captured_at");
+    setEvidence((data as Evidence[]) ?? []);
+    await refreshAudit();
+  }
+
+  async function saveEvidence() {
+    if (!incident || !editing.source.trim()) return;
+    const row = { source: editing.source.trim(), evidence_type: editing.evidence_type, confidence: editing.confidence };
+    if (editing.id) {
+      const { error } = await supabase.from("evidence_items").update(row).eq("id", editing.id).eq("org_id", m.org_id);
+      if (error) { window.alert("Could not update evidence."); return; }
+    } else {
+      const { data, error } = await supabase.from("evidence_items")
+        .insert({ ...row, org_id: m.org_id, incident_id: incident.id, agent_id: incident.agent_id }).select("id").single();
+      if (error) { window.alert("Could not add evidence."); return; }
+      setSelectedEvidence((s) => [...s, data.id]);
+    }
+    setEditing(blankEvidence);
+    setDiagnosis(null);
+    await reloadEvidence();
+  }
+
+  async function removeEvidence(id: string) {
+    if (!window.confirm("Remove this evidence item? This is recorded in the audit timeline.")) return;
+    const { error } = await supabase.from("evidence_items").delete().eq("id", id).eq("org_id", m.org_id);
+    if (error) { window.alert("Could not remove evidence."); return; }
+    setSelectedEvidence((s) => s.filter((x) => x !== id));
+    setDiagnosis(null);
+    await reloadEvidence();
+  }
+
   async function changeStatus(status: string) {
     if (!incident || status === incident.status) return;
     const { error } = await supabase.from("incidents").update({ status }).eq("id", incident.id).eq("org_id", m.org_id);
@@ -338,17 +382,30 @@ function IncidentDetail({ m }: { m: Membership }) {
               <span className="truncate">{x.source}</span>
               <span className="ml-auto font-mono text-[11px] uppercase text-muted-foreground">{x.evidence_type}</span>
               <span className="font-mono text-xs tabular-nums">{x.confidence}%</span>
+              {can.actOnIncidents(m.role) && <button type="button" onClick={() => setEditing({ id: x.id, source: x.source, evidence_type: x.evidence_type, confidence: x.confidence })} className="rounded-md border border-border px-2 py-0.5 text-xs hover:bg-foreground/5">Edit</button>}
+              {can.managePolicies(m.role) && <button type="button" onClick={() => void removeEvidence(x.id)} className="rounded-md border border-border px-2 py-0.5 text-xs text-destructive hover:bg-foreground/5">Remove</button>}
             </li>
           ))}
           {evidence.length === 0 && <li className="text-xs text-muted-foreground">No evidence captured.</li>}
         </ul>
+        {can.actOnIncidents(m.role) && (
+          <form onSubmit={(e) => { e.preventDefault(); void saveEvidence(); }} className="mt-4 flex flex-wrap items-end gap-2 border-t border-border pt-4">
+            <p className="w-full text-xs font-medium text-muted-foreground">{editing.id ? "Edit evidence" : "Add evidence"}</p>
+            <input aria-label="Evidence source" required maxLength={200} placeholder="Source, e.g. Payment system log" value={editing.source} onChange={(e) => setEditing({ ...editing, source: e.target.value })} className="min-w-48 flex-1 rounded-md border border-border bg-surface px-2 py-1.5 text-sm" />
+            <select aria-label="Evidence type" value={editing.evidence_type} onChange={(e) => setEditing({ ...editing, evidence_type: e.target.value })} className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm">
+              {["log", "payload", "policy_decision", "screenshot", "sensor", "note"].map((t) => <option key={t}>{t}</option>)}
+            </select>
+            <input aria-label="Evidence confidence" type="number" min={0} max={100} value={editing.confidence} onChange={(e) => setEditing({ ...editing, confidence: Math.max(0, Math.min(100, Number(e.target.value))) })} className="w-20 rounded-md border border-border bg-surface px-2 py-1.5 text-sm" />
+            <Button type="submit" size="sm" disabled={!editing.source.trim()}>{editing.id ? "Save changes" : "Add evidence"}</Button>
+            {editing.id && <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(blankEvidence)}>Cancel</Button>}
+          </form>
+        )}
       </Panel>
 
       {can.actOnIncidents(m.role) && (
         <section aria-labelledby="ai-diagnosis-heading" className="space-y-4 border-t border-border pt-6">
           <div className="flex flex-wrap items-center gap-3">
             <h2 id="ai-diagnosis-heading" className="text-lg font-semibold">AI diagnosis &amp; recovery plan</h2>
-            <DemoTag />
           </div>
           <p className="text-sm text-muted-foreground">Selected events and evidence are analyzed on request. Recommendations require human review; nothing is executed.</p>
           <label htmlFor="operator-notes" className="block text-xs font-medium text-muted-foreground">Operator context (optional)</label>
