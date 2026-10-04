@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { OrgGate } from "@/components/fg/OrgGate";
 import { AmbientField } from "@/components/fg/AmbientField";
 import { DemoTag, Panel } from "@/components/fg/ui";
+import { Builder } from "@/components/fg/Builder";
 import { can, type Membership } from "@/lib/useOrg";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -30,6 +31,7 @@ function Dashboard({ m }: { m: Membership }) {
   const [events, setEvents] = useState<Ev[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [recovery, setRecovery] = useState<Recovery[]>([]);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     void (async () => {
@@ -44,7 +46,7 @@ function Dashboard({ m }: { m: Membership }) {
       setIncidents(i.data ?? []);
       setRecovery(r.data ?? []);
     })();
-  }, [m.org_id]);
+  }, [m.org_id, tick]);
 
   const highRisk = events.filter((e) => e.risk_score >= 70).length;
   const metrics = [
@@ -147,6 +149,8 @@ function Dashboard({ m }: { m: Membership }) {
           </Panel>
         ))}
       </section>
+
+      <Builder m={m} onCreated={() => setTick((t) => t + 1)} />
     </div>
   );
 }
