@@ -76,8 +76,11 @@ export type Database = {
           id: string
           name: string
           org_id: string
+          permissions: string[]
           risk_score: number
+          role: string
           status: string
+          workflow_ids: string[]
         }
         Insert: {
           created_at?: string
@@ -85,8 +88,11 @@ export type Database = {
           id?: string
           name: string
           org_id: string
+          permissions?: string[]
           risk_score?: number
+          role?: string
           status?: string
+          workflow_ids?: string[]
         }
         Update: {
           created_at?: string
@@ -94,8 +100,11 @@ export type Database = {
           id?: string
           name?: string
           org_id?: string
+          permissions?: string[]
           risk_score?: number
+          role?: string
           status?: string
+          workflow_ids?: string[]
         }
         Relationships: [
           {
@@ -491,6 +500,10 @@ export type Database = {
         Returns: boolean
       }
       is_org_member: { Args: { _org: string }; Returns: boolean }
+      run_agent: {
+        Args: { _action: string; _agent: string; _detail?: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "owner" | "admin" | "analyst" | "viewer"
