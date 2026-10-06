@@ -267,7 +267,7 @@ function IncidentDetail({ m }: { m: Membership }) {
     };
     write("FlowGuard incident report", 18, true);
     write(`${incident.title} | ${incident.category} | ${incident.severity} | ${incident.status}`, 10);
-    write(`Generated ${new Date().toLocaleString()} - DEMO DATA - for human review, nothing executed`, 9);
+    write(`Generated ${new Date().toLocaleString()} - AI-generated, for human review, nothing executed`, 9);
     write("AI diagnosis and recovery plan", 13, true);
     write(diagnosis);
     write("Selected evidence", 13, true);
