@@ -80,6 +80,7 @@ function IncidentDetail({ m }: { m: Membership }) {
   const [diagnosis, setDiagnosis] = useState<string | null>(null);
   const [diagnosisError, setDiagnosisError] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [editing, setEditing] = useState<EvidenceDraft>(blankEvidence);
   const [reviews, setReviews] = useState<Record<number, Review>>({});
 
   useEffect(() => { setReviews({}); }, [diagnosis]);
