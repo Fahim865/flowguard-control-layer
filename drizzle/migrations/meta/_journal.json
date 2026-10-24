@@ -43,6 +43,13 @@
       "when": 1792870386361,
       "tag": "0005_policy_threshold_enforcement",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792870750917,
+      "tag": "0006_policy_scope_semantics",
+      "breakpoints": true
     }
   ]
 }
