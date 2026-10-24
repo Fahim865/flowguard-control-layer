@@ -32,6 +32,7 @@ export function Builder({ m, onCreated }: { m: Membership; onCreated: () => void
   const [wfName, setWfName] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [runAction, setRunAction] = useState<Record<string, string>>({});
+  const [runAmt, setRunAmt] = useState<Record<string, string>>({});
   const [runs, setRuns] = useState<Record<string, RunResult[]>>({});
   const [rule, setRule] = useState("");
   const [result, setResult] = useState<string | null>(null);
@@ -78,7 +79,7 @@ export function Builder({ m, onCreated }: { m: Membership; onCreated: () => void
 
   async function run(a: Agent) {
     const action = runAction[a.id] ?? "read_data";
-    const { data, error } = await supabase.rpc("run_agent", { _agent: a.id, _action: action, _detail: "" });
+    const { data, error } = await supabase.rpc("run_agent", { _agent: a.id, _action: action, _detail: (runAmt[a.id] ?? "").trim() });
     if (error) { setMsg(`Run failed: ${error.message}`); return; }
     setRuns((r) => ({ ...r, [a.id]: data as unknown as RunResult[] }));
     await refresh(`${a.name} ran ${action}.`);
@@ -174,6 +175,7 @@ export function Builder({ m, onCreated }: { m: Membership; onCreated: () => void
                 <p className="text-xs text-muted-foreground">Permissions: {a.permissions.join(", ") || "none"} · Workflows: {a.workflow_ids.map(wfName_).join(", ") || "none"}</p>
                 <div className="flex flex-wrap items-center gap-2">
                   <select aria-label={`Action for ${a.name}`} value={runAction[a.id] ?? "read_data"} onChange={(e) => setRunAction({ ...runAction, [a.id]: e.target.value })} className="rounded-md border border-border bg-surface px-2 py-1 text-xs">{PERMISSIONS.map((p) => <option key={p}>{p}</option>)}</select>
+                  <input aria-label={`Amount for ${a.name}`} type="number" min={0} placeholder="Amount $" value={runAmt[a.id] ?? ""} onChange={(e) => setRunAmt({ ...runAmt, [a.id]: e.target.value })} className="w-24 rounded-md border border-border bg-surface px-2 py-1 text-xs" />
                   <Button size="sm" variant="secondary" onClick={() => void run(a)}>Run</Button>
                 </div>
                 {runs[a.id]?.map((r, i) => (
@@ -193,7 +195,7 @@ export function Builder({ m, onCreated }: { m: Membership; onCreated: () => void
           {canAdmin ? (<>
             <input aria-label="Policy name" placeholder="Name" value={pol.name} onChange={(e) => setPol({ ...pol, name: e.target.value })} className={field} />
             <input aria-label="Policy rule" placeholder="Rule, e.g. Refunds above $500 require approval" value={pol.rule} onChange={(e) => setPol({ ...pol, rule: e.target.value })} className={field} />
-            <p className="text-[11px] text-muted-foreground">Agent runs match rules mentioning: read, email, refund, record, external.</p>
+            <p className="text-[11px] text-muted-foreground">Agent runs match rules mentioning: read, email, refund, record, external. An amount in a rule (e.g. $500) sets a threshold — runs above it are blocked.</p>
             <div className="flex items-center gap-3">
               <select aria-label="Policy effect" value={pol.effect} onChange={(e) => setPol({ ...pol, effect: e.target.value })} className={field}>{["allow", "review", "block"].map((s) => <option key={s}>{s}</option>)}</select>
               <label className="flex items-center gap-1 text-xs"><input type="checkbox" className="accent-primary" checked={pol.enabled} onChange={(e) => setPol({ ...pol, enabled: e.target.checked })} />Enabled</label>
